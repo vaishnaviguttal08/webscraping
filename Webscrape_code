@@ -1,0 +1,63 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+import pandas as pd
+
+# Set up Selenium options
+options = Options()
+options.headless = True
+options.add_argument("--window-size=1920,1200")
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+options.add_argument('--disable-gpu')
+
+# Initialize the WebDriver
+service = Service(ChromeDriverManager().install())
+driver = webdriver.Chrome(service=service, options=options)
+
+
+driver.get("https://www.goodreads.com/quotes/tag/authors")
+
+driver.implicitly_wait(10)
+
+# Find quote elements
+quote_elements = driver.find_elements(By.CLASS_NAME, 'quote')
+
+# Extract data
+quotes_data = []
+for quote in quote_elements:
+    try:
+        # Extract author name
+        author_name = quote.find_element(By.CLASS_NAME, 'authorOrTitle').text.strip()
+        
+        # Extract quote text
+        quote_text_element = quote.find_element(By.CLASS_NAME, 'quoteText')
+        quote_text = quote_text_element.text.split("”")[0].strip() + "”"
+        
+        # Extract tags
+        tags_section = quote.find_element(By.CLASS_NAME, 'greyText.smallText.left')
+        tags = [tag.text.strip() for tag in tags_section.find_elements(By.TAG_NAME, 'a')]
+        
+        # Extract likes
+        likes_text = quote.find_element(By.CLASS_NAME, 'right').text.split()[0]
+        likes = int(likes_text.replace(',', ''))
+        
+        quotes_data.append({
+            'author_name': author_name,
+            'quote': quote_text,
+            'tags': ', '.join(tags),
+            'likes': likes
+        })
+    except Exception as e:
+        print(f"Error processing quote: {e}")
+
+
+driver.quit()
+
+
+df_selenium = pd.DataFrame(quotes_data)
+
+
+print(df_selenium)
