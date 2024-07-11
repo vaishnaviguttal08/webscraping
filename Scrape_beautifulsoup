@@ -1,0 +1,52 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+url = 'https://www.goodreads.com/quotes/tag/authors'
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+}
+
+response = requests.get(url, headers=headers)
+soup = BeautifulSoup(response.content, 'html.parser')
+
+quotes_data = []
+
+for quote in soup.find_all(class_='quote'):
+    try:
+        author_elem = quote.find(class_='authorOrTitle')
+        if author_elem:
+            author_name = author_elem.get_text(strip=True).split(',')[0]
+        else:
+            author_name = 'Unknown'
+
+        quote_elem = quote.find(class_='quoteText')
+        if quote_elem:
+            quote_text = quote_elem.get_text(strip=True)
+        else:
+            quote_text = 'Unknown'
+
+        tags_elem = quote.find(class_='greyText.smallText.left')
+        if tags_elem:
+            tags = [tag.get_text(strip=True) for tag in tags_elem.find_all('a')]
+        else:
+            tags = []
+
+        likes_elem = quote.find(class_='right')
+        if likes_elem:
+            likes_text = likes_elem.get_text(strip=True)
+            likes = int(likes_text.split()[0].replace(',', ''))
+        else:
+            likes = 0
+
+        quotes_data.append({
+            'author_name': author_name,
+            'quote': quote_text,
+            'tags': ', '.join(tags),
+            'likes': likes
+        })
+    except Exception as e:
+        print(f"Error processing quote: {e}")
+
+df_bs4 = pd.DataFrame(quotes_data)
+print(df_bs4)
